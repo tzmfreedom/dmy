@@ -1,0 +1,5 @@
+package: github.com/tzmfreedom/dmy
+import:
+- package: github.com/urfave/cli
+  version: v1.19.1
+- package: github.com/icrowley/fake
