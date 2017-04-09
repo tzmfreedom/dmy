@@ -15,6 +15,7 @@ import (
 type config struct {
 	Number     int
 	DateFormat string
+	Language   string
 }
 
 type record struct {
@@ -334,6 +335,11 @@ func main() {
 			Value:       time.RFC3339,
 			EnvVar:      "DATEFORMAT",
 		},
+		cli.StringFlag{
+			Name:        "lang, L",
+			Destination: &cfg.Language,
+			Value:       "en",
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
@@ -359,6 +365,7 @@ func outputDummyData(columns []string, cfg *config) {
 		},
 	}
 	tpl := template.Must(template.New("dummy_data").Funcs(funcMap).Parse(strings.Join(columns, "\t") + "\n"))
+	fake.SetLang(cfg.Language)
 	for i := 0; i < cfg.Number; i++ {
 		tpl.Execute(os.Stdout, record{Index: i})
 	}
