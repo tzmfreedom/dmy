@@ -343,17 +343,17 @@ func main() {
 			EnvVar:      "DATEFORMAT",
 		},
 		cli.StringFlag{
-			Name:        "lang, L",
+			Name:        "language, L",
 			Destination: &cfg.Language,
 			Value:       "en",
 		},
 		cli.StringFlag{
-			Name:        "delim, D",
+			Name:        "delimiter, D",
 			Destination: &cfg.Delimiter,
 			Value:       "\t",
 		},
 		cli.StringFlag{
-			Name:        "enc, E",
+			Name:        "enclosure, E",
 			Destination: &cfg.Enclosure,
 			Value:       "",
 		},
