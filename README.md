@@ -25,12 +25,26 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --number value, -N value      (default: 0)
-   --dateformat value, -D value  (default: "2006-01-02T15:04:05Z07:00") [$DATEFORMAT]
+   --dateformat value, -F value  (default: "2006-01-02T15:04:05Z07:00") [$DATEFORMAT]
+   --language value, -L value    (default: "en")
+   --delimiter value, -D value   (default: "\t")
+   --enclosure value, -E value
    --help, -h                    show help
    --version, -v                 print the version
+```
 
-ex)
+### Example
+You can get 10 records that contains fixed string, record's index and date value that added by record's index seconds.
+```bash
 $ dmy -N 10 hoge "foo_{{.Index}}" "{{date .Index}}"
+```
+
+Default format is Tab Separated Values.
+
+If you want to other format, for example CSV, you should set delimiter and enclosure options.
+The following command allows you to get CSV dummy data.
+```bash
+$ dmy -N 10 -E "\"" -D "," "hoge" "fuga" "\"aaa\""
 ```
 
 DMY use golang template.
@@ -140,3 +154,7 @@ Supported data type is following.
 * Word
 * Words
 * Zip
+
+Dummy data is changed by language option.
+DMY use [icrowley/fake](https://github.com/icrowley/fake) to create dummy data,
+so current enabled value for language option is only "en" and "ru".
