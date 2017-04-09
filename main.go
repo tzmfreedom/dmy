@@ -35,6 +35,8 @@ var (
 	Revision string
 )
 
+var Out = os.Stdout
+
 var fakeMap = map[string](func() string){
 	"brand": func() string {
 		return fake.Brand()
@@ -384,7 +386,7 @@ func outputDummyData(columns []string, cfg *config) error {
 
 	if cfg.Header != "" {
 		headers := strings.Split(cfg.Header, ",")
-		os.Stdout.Write([]byte(strings.Join(headers, cfg.Delimiter) + cfg.Linebreak))
+		Out.Write([]byte(strings.Join(headers, cfg.Delimiter) + cfg.Linebreak))
 	}
 	for i := 0; i < cfg.Number; i++ {
 		cols := []string{}
@@ -393,7 +395,7 @@ func outputDummyData(columns []string, cfg *config) error {
 			tpls[j].Execute(buf, record{Index: i})
 			cols = append(cols, d.Decorate(buf.String()))
 		}
-		os.Stdout.Write([]byte(strings.Join(cols, cfg.Delimiter) + cfg.Linebreak))
+		Out.Write([]byte(strings.Join(cols, cfg.Delimiter) + cfg.Linebreak))
 	}
 	return nil
 }
