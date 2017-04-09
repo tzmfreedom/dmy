@@ -8,6 +8,7 @@ import (
 	"text/template"
 	"time"
 	"bytes"
+	"math/rand"
 
 	"github.com/icrowley/fake"
 	"github.com/urfave/cli"
@@ -19,6 +20,8 @@ type config struct {
 	Language   string
 	Delimiter  string
 	Enclosure  string
+	StartTime  int64
+	Linebreak  string
 }
 
 type record struct {
@@ -28,12 +31,6 @@ type record struct {
 var (
 	Version  string
 	Revision string
-)
-
-var now = time.Now()
-
-const (
-	LINE_BREAK = "\n"
 )
 
 var fakeMap = map[string](func() string){
@@ -357,6 +354,16 @@ func main() {
 			Destination: &cfg.Enclosure,
 			Value:       "",
 		},
+		cli.Int64Flag{
+			Name:        "startTime",
+			Destination: &cfg.StartTime,
+			Value:       time.Now().Unix(),
+		},
+		cli.StringFlag{
+			Name:        "linebreak",
+			Destination: &cfg.Linebreak,
+			Value:       "\n",
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
@@ -366,13 +373,23 @@ func main() {
 }
 
 func outputDummyData(columns []string, cfg *config) error {
-	var funcMap = template.FuncMap{
+	rand.Seed(time.Now().UnixNano())
+	now := time.Unix(cfg.StartTime, 0)
+
+	funcMap := template.FuncMap{
 		"add":  func(a, b int) int { return a + b },
 		"sub":  func(a, b int) int { return a - b },
 		"mul":  func(a, b int) int { return a * b },
 		"div":  func(a, b int) int { return a / b },
 		"mod":  func(a, b int) int { return a % b },
-		"date": func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
+		"choice":  func(choices ...string) string {
+			i := rand.Intn(len(choices))
+			return choices[i]
+		},
+		"date_s": func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
+		"date_m": func(m int) string { return now.Add(time.Duration(m) * time.Minute).Format(cfg.DateFormat) },
+		"date_h": func(h int) string { return now.Add(time.Duration(h) * time.Hour).Format(cfg.DateFormat) },
+		"date_add": func(y int, m int, d int) string { return now.AddDate(y, m, d).Format(cfg.DateFormat) },
 		"fake": func(t string) string {
 			if f, ok := fakeMap[strings.ToLower(t)]; ok {
 				return f()
@@ -401,7 +418,7 @@ func outputDummyData(columns []string, cfg *config) error {
 			tpls[j].Execute(buf, record{Index: i})
 			cols = append(cols, d.Decorate(buf.String()))
 		}
-		os.Stdout.Write([]byte(strings.Join(cols, cfg.Delimiter) + LINE_BREAK))
+		os.Stdout.Write([]byte(strings.Join(cols, cfg.Delimiter) + cfg.Linebreak))
 	}
 	return nil
 }
