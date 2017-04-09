@@ -373,43 +373,10 @@ func main() {
 }
 
 func outputDummyData(columns []string, cfg *config) error {
-	rand.Seed(time.Now().UnixNano())
-	now := time.Unix(cfg.StartTime, 0)
-
-	funcMap := template.FuncMap{
-		"add":  func(a, b int) int { return a + b },
-		"sub":  func(a, b int) int { return a - b },
-		"mul":  func(a, b int) int { return a * b },
-		"div":  func(a, b int) int { return a / b },
-		"mod":  func(a, b int) int { return a % b },
-		"choice":  func(choices ...string) string {
-			i := rand.Intn(len(choices))
-			return choices[i]
-		},
-		"date_s": func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
-		"date_m": func(m int) string { return now.Add(time.Duration(m) * time.Minute).Format(cfg.DateFormat) },
-		"date_h": func(h int) string { return now.Add(time.Duration(h) * time.Hour).Format(cfg.DateFormat) },
-		"date_add": func(y int, m int, d int) string { return now.AddDate(y, m, d).Format(cfg.DateFormat) },
-		"fake": func(t string) string {
-			if f, ok := fakeMap[strings.ToLower(t)]; ok {
-				return f()
-			}
-			return ""
-		},
-	}
 	fake.SetLang(cfg.Language)
 
-	var d decorator
-	if cfg.Enclosure != "" {
-		d = &encloseDecorator{enclosure: cfg.Enclosure}
-	} else {
-		d = &nullDecorator{}
-	}
-
-	tpls := []*template.Template{}
-	for i := 0; i < len(columns); i++ {
-		tpls = append(tpls, template.Must(template.New("colmn_tpl_" + fmt.Sprint(i)).Funcs(funcMap).Parse(columns[i])))
-	}
+	d := getDecorator(cfg)
+	tpls := getTemplates(cfg, columns)
 
 	for i := 0; i < cfg.Number; i++ {
 		cols := []string{}
@@ -421,6 +388,50 @@ func outputDummyData(columns []string, cfg *config) error {
 		os.Stdout.Write([]byte(strings.Join(cols, cfg.Delimiter) + cfg.Linebreak))
 	}
 	return nil
+}
+
+func getTemplates(cfg *config, columns []string) []*template.Template {
+	funcMap := getFuncMap(cfg)
+	tpls := []*template.Template{}
+	for i := 0; i < len(columns); i++ {
+		tpls = append(tpls, template.Must(template.New("colmn_tpl_" + fmt.Sprint(i)).Funcs(funcMap).Parse(columns[i])))
+	}
+	return tpls
+}
+
+func getDecorator(cfg *config) decorator {
+	if cfg.Enclosure != "" {
+		return &encloseDecorator{enclosure: cfg.Enclosure}
+	} else {
+		return &nullDecorator{}
+	}
+}
+
+func getFuncMap(cfg *config) template.FuncMap {
+	rand.Seed(time.Now().UnixNano())
+
+	now := time.Unix(cfg.StartTime, 0)
+	return template.FuncMap{
+		"add":  func(a, b int) int { return a + b },
+		"sub":  func(a, b int) int { return a - b },
+		"mul":  func(a, b int) int { return a * b },
+		"div":  func(a, b int) int { return a / b },
+		"mod":  func(a, b int) int { return a % b },
+		"choice":  func(choices ...string) string {
+			i := rand.Intn(len(choices))
+			return choices[i]
+		},
+		"date": func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
+		"date_m": func(m int) string { return now.Add(time.Duration(m) * time.Minute).Format(cfg.DateFormat) },
+		"date_h": func(h int) string { return now.Add(time.Duration(h) * time.Hour).Format(cfg.DateFormat) },
+		"date_add": func(y int, m int, d int) string { return now.AddDate(y, m, d).Format(cfg.DateFormat) },
+		"fake": func(t string) string {
+			if f, ok := fakeMap[strings.ToLower(t)]; ok {
+				return f()
+			}
+			return ""
+		},
+	}
 }
 
 type decorator interface {
