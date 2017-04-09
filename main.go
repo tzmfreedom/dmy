@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"bytes"
 
 	"github.com/icrowley/fake"
 	"github.com/urfave/cli"
@@ -16,6 +17,8 @@ type config struct {
 	Number     int
 	DateFormat string
 	Language   string
+	Delimiter  string
+	Enclosure  string
 }
 
 type record struct {
@@ -28,6 +31,10 @@ var (
 )
 
 var now = time.Now()
+
+const (
+	LINE_BREAK = "\n"
+)
 
 var fakeMap = map[string](func() string){
 	"brand": func() string {
@@ -330,7 +337,7 @@ func main() {
 			Destination: &cfg.Number,
 		},
 		cli.StringFlag{
-			Name:        "dateformat, D",
+			Name:        "dateformat, F",
 			Destination: &cfg.DateFormat,
 			Value:       time.RFC3339,
 			EnvVar:      "DATEFORMAT",
@@ -340,16 +347,25 @@ func main() {
 			Destination: &cfg.Language,
 			Value:       "en",
 		},
+		cli.StringFlag{
+			Name:        "delim, D",
+			Destination: &cfg.Delimiter,
+			Value:       "\t",
+		},
+		cli.StringFlag{
+			Name:        "enc, E",
+			Destination: &cfg.Enclosure,
+			Value:       "",
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
-		outputDummyData(c.Args(), cfg)
-		return nil
+		return outputDummyData(c.Args(), cfg)
 	}
 	app.Run(os.Args)
 }
 
-func outputDummyData(columns []string, cfg *config) {
+func outputDummyData(columns []string, cfg *config) error {
 	var funcMap = template.FuncMap{
 		"add":  func(a, b int) int { return a + b },
 		"sub":  func(a, b int) int { return a - b },
@@ -364,9 +380,46 @@ func outputDummyData(columns []string, cfg *config) {
 			return ""
 		},
 	}
-	tpl := template.Must(template.New("dummy_data").Funcs(funcMap).Parse(strings.Join(columns, "\t") + "\n"))
 	fake.SetLang(cfg.Language)
-	for i := 0; i < cfg.Number; i++ {
-		tpl.Execute(os.Stdout, record{Index: i})
+
+	var d decorator
+	if cfg.Enclosure != "" {
+		d = &encloseDecorator{enclosure: cfg.Enclosure}
+	} else {
+		d = &nullDecorator{}
 	}
+
+	tpls := []*template.Template{}
+	for i := 0; i < len(columns); i++ {
+		tpls = append(tpls, template.Must(template.New("colmn_tpl_" + fmt.Sprint(i)).Funcs(funcMap).Parse(columns[i])))
+	}
+
+	for i := 0; i < cfg.Number; i++ {
+		cols := []string{}
+		for j := 0; j < len(columns); j++ {
+			buf := bytes.NewBuffer([]byte{})
+			tpls[j].Execute(buf, record{Index: i})
+			cols = append(cols, d.Decorate(buf.String()))
+		}
+		os.Stdout.Write([]byte(strings.Join(cols, cfg.Delimiter) + LINE_BREAK))
+	}
+	return nil
+}
+
+type decorator interface {
+	Decorate(string) string
+}
+
+type encloseDecorator struct {
+	enclosure string
+}
+
+func (d *encloseDecorator) Decorate(src string) string {
+	return d.enclosure + strings.Replace(src, d.enclosure, "\\" + d.enclosure, -1) + d.enclosure
+}
+
+type nullDecorator struct {}
+
+func (d *nullDecorator) Decorate(src string) string{
+	return src
 }
