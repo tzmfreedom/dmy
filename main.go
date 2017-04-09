@@ -1,14 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
-	"bytes"
-	"math/rand"
 
 	"github.com/icrowley/fake"
 	"github.com/urfave/cli"
@@ -22,6 +23,7 @@ type config struct {
 	Enclosure  string
 	StartTime  int64
 	Linebreak  string
+	Header     string
 }
 
 type record struct {
@@ -100,9 +102,6 @@ var fakeMap = map[string](func() string){
 	//"enfallback": func() string {
 	//        return fake.EnFallback()
 	//},
-	//"fs": func() string {
-	//        return fake.FS()
-	//},
 	"femalefirstname": func() string {
 		return fake.FemaleFirstName()
 	},
@@ -139,9 +138,6 @@ var fakeMap = map[string](func() string){
 	"genderabbrev": func() string {
 		return fake.GenderAbbrev()
 	},
-	//"getlangs": func() string {
-	//        return fake.GetLangs()
-	//},
 	"hexcolor": func() string {
 		return fake.HexColor()
 	},
@@ -283,9 +279,6 @@ var fakeMap = map[string](func() string){
 	"topleveldomain": func() string {
 		return fake.TopLevelDomain()
 	},
-	//"useexternaldata": func() string {
-	//        return fake.UseExternalData()
-	//},
 	"useragent": func() string {
 		return fake.UserAgent()
 	},
@@ -355,7 +348,7 @@ func main() {
 			Value:       "",
 		},
 		cli.Int64Flag{
-			Name:        "startTime",
+			Name:        "starttime",
 			Destination: &cfg.StartTime,
 			Value:       time.Now().Unix(),
 		},
@@ -364,9 +357,20 @@ func main() {
 			Destination: &cfg.Linebreak,
 			Value:       "\n",
 		},
+		cli.StringFlag{
+			Name:        "header",
+			Destination: &cfg.Header,
+			Value:       "",
+		},
 	}
 
 	app.Action = func(c *cli.Context) error {
+		if cfg.Number <= 0 {
+			return errors.New("You must specify --number option")
+		}
+		if len(c.Args()) == 0 {
+			return errors.New("You mus specify template strings to output")
+		}
 		return outputDummyData(c.Args(), cfg)
 	}
 	app.Run(os.Args)
@@ -378,6 +382,10 @@ func outputDummyData(columns []string, cfg *config) error {
 	d := getDecorator(cfg)
 	tpls := getTemplates(cfg, columns)
 
+	if cfg.Header != "" {
+		headers := strings.Split(cfg.Header, ",")
+		os.Stdout.Write([]byte(strings.Join(headers, cfg.Delimiter) + cfg.Linebreak))
+	}
 	for i := 0; i < cfg.Number; i++ {
 		cols := []string{}
 		for j := 0; j < len(columns); j++ {
@@ -394,7 +402,7 @@ func getTemplates(cfg *config, columns []string) []*template.Template {
 	funcMap := getFuncMap(cfg)
 	tpls := []*template.Template{}
 	for i := 0; i < len(columns); i++ {
-		tpls = append(tpls, template.Must(template.New("colmn_tpl_" + fmt.Sprint(i)).Funcs(funcMap).Parse(columns[i])))
+		tpls = append(tpls, template.Must(template.New("colmn_tpl_"+fmt.Sprint(i)).Funcs(funcMap).Parse(columns[i])))
 	}
 	return tpls
 }
@@ -412,18 +420,18 @@ func getFuncMap(cfg *config) template.FuncMap {
 
 	now := time.Unix(cfg.StartTime, 0)
 	return template.FuncMap{
-		"add":  func(a, b int) int { return a + b },
-		"sub":  func(a, b int) int { return a - b },
-		"mul":  func(a, b int) int { return a * b },
-		"div":  func(a, b int) int { return a / b },
-		"mod":  func(a, b int) int { return a % b },
-		"choice":  func(choices ...string) string {
+		"add": func(a, b int) int { return a + b },
+		"sub": func(a, b int) int { return a - b },
+		"mul": func(a, b int) int { return a * b },
+		"div": func(a, b int) int { return a / b },
+		"mod": func(a, b int) int { return a % b },
+		"choice": func(choices ...string) string {
 			i := rand.Intn(len(choices))
 			return choices[i]
 		},
-		"date": func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
-		"date_m": func(m int) string { return now.Add(time.Duration(m) * time.Minute).Format(cfg.DateFormat) },
-		"date_h": func(h int) string { return now.Add(time.Duration(h) * time.Hour).Format(cfg.DateFormat) },
+		"date":     func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
+		"date_m":   func(m int) string { return now.Add(time.Duration(m) * time.Minute).Format(cfg.DateFormat) },
+		"date_h":   func(h int) string { return now.Add(time.Duration(h) * time.Hour).Format(cfg.DateFormat) },
 		"date_add": func(y int, m int, d int) string { return now.AddDate(y, m, d).Format(cfg.DateFormat) },
 		"fake": func(t string) string {
 			if f, ok := fakeMap[strings.ToLower(t)]; ok {
@@ -443,11 +451,11 @@ type encloseDecorator struct {
 }
 
 func (d *encloseDecorator) Decorate(src string) string {
-	return d.enclosure + strings.Replace(src, d.enclosure, "\\" + d.enclosure, -1) + d.enclosure
+	return d.enclosure + strings.Replace(src, d.enclosure, "\\"+d.enclosure, -1) + d.enclosure
 }
 
-type nullDecorator struct {}
+type nullDecorator struct{}
 
-func (d *nullDecorator) Decorate(src string) string{
+func (d *nullDecorator) Decorate(src string) string {
 	return src
 }
