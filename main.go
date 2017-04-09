@@ -352,7 +352,7 @@ func outputDummyData(columns []string, cfg *config) {
 		"mod":  func(a, b int) int { return a % b },
 		"date": func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
 		"fake": func(t string) string {
-			if f, ok := fakeMap[t]; ok {
+			if f, ok := fakeMap[strings.ToLower(t)]; ok {
 				return f()
 			}
 			return ""
