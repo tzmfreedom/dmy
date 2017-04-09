@@ -10,31 +10,43 @@ set -ue
 
 UNAME=$(uname -s)
 if [ "$UNAME" != "Linux" -a "$UNAME" != "Darwin" ] ; then
-    echo "Sorry, windows user download from release page to install dmy."
+    echo "Sorry, OS not supported: ${UNAME}. Download binary from https://github.com/${USERNAME}/${NAME}/releases"
     exit 1
 fi
 
 
-UNAME_P=$(uname -p)
-if [ "$UNAME" = "Darwin" ] ; then
+if [ "${UNAME}" = "Darwin" ] ; then
   OS="darwin"
-elif [ "$UNAME" = "Linux" ] ; then
-  OS="linux"
-fi
 
-if [ "i386" == "${UNAME_P}" -o "i686" == "${UNAME_P}" ] ; then
-  ARCH="386"
-else
-  ARCH="amd64"
+  OSX_ARCH=$(uname -m)
+  if [ "${OSX_ARCH}" = "x86_64" ] ; then
+    ARCH="amd64"
+  else
+    echo "Sorry, architecture not supported: ${OSX_ARCH}. Download binary from https://github.com/${USERNAME}/${NAME}/releases"
+    exit 1
+  fi
+elif [ "${UNAME}" = "Linux" ] ; then
+  OS="linux"
+
+  LINUX_ARCH=$(uname -m)
+  if [ "${LINUX_ARCH}" = "i686" ] ; then
+    ARCH="386"
+  elif [ "${LINUX_ARCH}" = "x86_64" ] ; then
+    ARCH="amd64"
+  else
+    echo "Sorry, architecture not supported: ${LINUX_ARCH}. Download binary from https://github.com/${USERNAME}/${NAME}/releases"
+    exit 1
+  fi
 fi
 
 ARCHIVE_FILE=${NAME}-${VERSION}-${OS}-${ARCH}.tar.gz
 BINARY="https://github.com/${GITHUB_USER}/${NAME}/releases/download/v${VERSION}/${ARCHIVE_FILE}"
 
 cd $TMP_DIR
-curl -L -O ${BINARY}
+curl -sL -O ${BINARY}
 
 tar xzf ${ARCHIVE_FILE}
-mv ${OS}-${ARCH}/${NAME} ${PREFIX}/bin/${NAME} 
+mv ${OS}-${ARCH}/${NAME} ${PREFIX}/bin/${NAME}
+chmod +x ${PREFIX}/bin/${NAME}
 rm -rf ${OS}-${ARCH}
 rm -rf ${ARCHIVE_FILE}

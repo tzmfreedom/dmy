@@ -4,6 +4,12 @@ Command line interface to create dummy data.
 
 ## Install
 
+For Linux or macOS user
+```
+$ curl -sL http://install.freedom-man.com/dmy.sh | sh
+```
+
+For go user
 ```bash
 $ go get github.com/tzmfreedom/dmy
 ```
