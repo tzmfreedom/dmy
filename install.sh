@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NAME="dmy"
-VERSION="0.1.0"
+VERSION="0.1.1"
 PREFIX="/usr/local"
 GITHUB_USER="tzmfreedom"
 TMP_DIR="/tmp"
