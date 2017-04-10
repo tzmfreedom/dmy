@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/icrowley/fake"
+	"github.com/jehiah/go-strftime"
 	"github.com/urfave/cli"
 )
 
@@ -21,7 +22,7 @@ type config struct {
 	Language   string
 	Delimiter  string
 	Enclosure  string
-	StartTime  int64
+	StartTime  string
 	Linebreak  string
 	Header     string
 }
@@ -331,7 +332,7 @@ func main() {
 		cli.StringFlag{
 			Name:        "dateformat, F",
 			Destination: &cfg.DateFormat,
-			Value:       time.RFC3339,
+			Value:       "%Y-%m-%d %H:%M:%S",
 			EnvVar:      "DATEFORMAT",
 		},
 		cli.StringFlag{
@@ -349,10 +350,10 @@ func main() {
 			Destination: &cfg.Enclosure,
 			Value:       "",
 		},
-		cli.Int64Flag{
+		cli.StringFlag{
 			Name:        "starttime",
 			Destination: &cfg.StartTime,
-			Value:       time.Now().Unix(),
+			Value:       "now",
 		},
 		cli.StringFlag{
 			Name:        "linebreak",
@@ -371,7 +372,12 @@ func main() {
 			return errors.New("You must specify --number option")
 		}
 		if len(c.Args()) == 0 {
-			return errors.New("You mus specify template strings to output")
+			return errors.New("You must specify template strings to output")
+		}
+		if cfg.StartTime != "now" {
+			if _, err := time.Parse("2006-01-02 15:04:05", cfg.StartTime); err != nil {
+				return err
+			}
 		}
 		return outputDummyData(c.Args(), cfg)
 	}
@@ -420,7 +426,12 @@ func getDecorator(cfg *config) decorator {
 func getFuncMap(cfg *config) template.FuncMap {
 	rand.Seed(time.Now().UnixNano())
 
-	now := time.Unix(cfg.StartTime, 0)
+	var now time.Time
+	if cfg.StartTime == "now" {
+		now = time.Now()
+	} else {
+		now, _ = time.Parse("2006-01-02 15:04:05", cfg.StartTime)
+	}
 	return template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"sub": func(a, b int) int { return a - b },
@@ -431,10 +442,12 @@ func getFuncMap(cfg *config) template.FuncMap {
 			i := rand.Intn(len(choices))
 			return choices[i]
 		},
-		"date":     func(s int) string { return now.Add(time.Duration(s) * time.Second).Format(cfg.DateFormat) },
-		"date_m":   func(m int) string { return now.Add(time.Duration(m) * time.Minute).Format(cfg.DateFormat) },
-		"date_h":   func(h int) string { return now.Add(time.Duration(h) * time.Hour).Format(cfg.DateFormat) },
-		"date_add": func(y int, m int, d int) string { return now.AddDate(y, m, d).Format(cfg.DateFormat) },
+		"date":   func(s int) string { return strftime.Format(cfg.DateFormat, now.Add(time.Duration(s)*time.Second)) },
+		"date_m": func(m int) string { return strftime.Format(cfg.DateFormat, now.Add(time.Duration(m)*time.Minute)) },
+		"date_h": func(h int) string { return strftime.Format(cfg.DateFormat, now.Add(time.Duration(h)*time.Hour)) },
+		"date_add": func(y int, m int, d int) string {
+			return strftime.Format(cfg.DateFormat, now.AddDate(y, m, d))
+		},
 		"fake": func(t string) string {
 			if f, ok := fakeMap[strings.ToLower(t)]; ok {
 				return f()
